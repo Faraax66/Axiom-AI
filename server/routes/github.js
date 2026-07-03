@@ -2,6 +2,7 @@ const express = require('express');
 const crypto = require('crypto');
 const { getPRDiff, postReviewComment } = require('../utils/octokit');
 const { reviewCode } = require('../utils/gemini');
+const { saveReview } = require('../utils/supabase');
 
 const router = express.Router();
 
@@ -71,6 +72,10 @@ router.post('/webhook', express.raw({ type: '*/*' }), async (req, res) => {
     console.log('💬 Posting review to GitHub...');
     await postReviewComment(owner, repo, pull_number, review);
 
+    // Step 8 — Save to database
+    console.log('💾 Saving to database...');
+    await saveReview(owner, repo, pull_number, pr_title, pr_author, review);
+
     console.log('✅ Review complete!\n');
     res.status(200).json({ 
       message: 'Review completed successfully',
@@ -78,7 +83,7 @@ router.post('/webhook', express.raw({ type: '*/*' }), async (req, res) => {
       score: review.score,
       issues: review.issues.length
     });
-
+    
   } catch (error) {
     console.error('❌ Review failed:', error);
     res.status(500).json({ error: error.message });
